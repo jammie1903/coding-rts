@@ -1,0 +1,4 @@
+*.db
+/user-scripts
+/node_modules
+/.vscode
