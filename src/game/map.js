@@ -1,3 +1,5 @@
+const chance = new require("chance")();
+
 module.exports = class Map {
 
     constructor() {
@@ -11,6 +13,12 @@ module.exports = class Map {
             let y = Math.floor(i / this.width);
             this.rooms.push(new Room(x, y, this.roomWidth, this.roomHeight));
         }
+        this.linkRooms();
+
+        this.rooms.forEach(room => room.populate(this.roomWidth, this.roomHeight));
+    }
+
+    linkRooms() {
         let room = this.rooms[Math.floor(Math.random() * this.width * this.height)];
         while (true) {
 
@@ -34,7 +42,7 @@ module.exports = class Map {
                 }
                 unlinkedRooms = this.rooms.filter(r => !r.links.length);
                 if (!unlinkedRooms.length) {
-                    return;
+                    break;
                 }
                 room = unlinkedRooms[Math.floor(Math.random() * unlinkedRooms.length)];
             }
@@ -54,6 +62,11 @@ module.exports = class Map {
             }))
         }
     }
+
+    roomOverview(x, y) {
+        let room = this.rooms[x + y * this.width];
+        return room.tiles;
+    }
 }
 
 class Room {
@@ -62,9 +75,85 @@ class Room {
         this.y = y;
         this.tiles = [];
         for (let i = 0; i < roomWidth * roomHeight; i++) {
-            this.tiles.push(new Tile());
+            let x = i % roomWidth;
+            let y = Math.floor(i / roomWidth);
+            this.tiles.push(new Tile(x, y));
         }
         this.links = [];
+    }
+
+    populate(roomWidth, roomHeight) {
+
+        const linkedTiles = this.tiles.filter(t => t.link);
+        const randomPoint = { x: 2 + Math.floor(Math.random() * (roomWidth - 4)), y: 2 + Math.floor(Math.random() * (roomHeight - 4)) };
+        this.tiles[randomPoint.x + randomPoint.y * roomWidth].wall = false
+        linkedTiles.forEach(t1 => {
+            this.drunkenPath(t1, randomPoint, roomWidth, roomHeight).forEach(point => this.tiles[point.x + point.y * roomWidth].wall = false);
+        });
+
+        const maxWallCount = Math.floor(roomWidth * roomHeight * 0.4);
+        let reorderedTiles = chance.shuffle(this.tiles.filter(t => t.wall));
+        let edgesRemoved = 0;
+        let count = 0
+        while (reorderedTiles.length && maxWallCount < reorderedTiles.length + edgesRemoved) {
+            const tile = reorderedTiles.shift();
+            const neighbours = this.neighbours(tile, roomWidth, roomHeight);
+            if (neighbours.length === 4) {
+                if (neighbours.find(t => !t.wall)) {
+                    tile.wall = false;
+                } else {
+                    reorderedTiles.push(tile);
+                }
+            } else {
+                edgesRemoved++;
+            }
+        }
+        if (!reorderedTiles.length) {
+            console.log(this.x, this.y);
+            console.log("there were no more tiles for");
+        }
+    }
+
+    neighbours(tile, roomWidth, roomHeight) {
+        let pos = roomWidth * tile.y + tile.x;
+        let adjacentTiles = [];
+        if (tile.x > 0) adjacentTiles.push(this.tiles[pos - 1]);
+        if (tile.x < roomWidth - 1) adjacentTiles.push(this.tiles[pos + 1]);
+        if (tile.y > 0) adjacentTiles.push(this.tiles[pos - roomHeight]);
+        if (tile.y < roomHeight - 1) adjacentTiles.push(this.tiles[pos + roomHeight]);
+        return adjacentTiles;
+    }
+
+    drunkenPath(from, to, roomWidth, roomHeight) {
+        const returnPath = [];
+        let pos = { x: from.x, y: from.y };
+        returnPath.push(pos);
+        while (Math.abs(pos.x - to.x) + Math.abs(pos.y - to.y) > 1) {
+            let xDiff = Math.abs(pos.x - to.x);
+            let yDiff = Math.abs(pos.y - to.y);
+
+            if (pos.x === roomWidth - 1) pos = { x: pos.x - 1, y: pos.y };
+            else if (pos.x === 0) pos = { x: pos.x + 1, y: pos.y };
+            else if (pos.y === roomHeight - 1) pos = { x: pos.x, y: pos.y - 1 };
+            else if (pos.y === 0) pos = { x: pos.x, y: pos.y + 1 };
+
+            else if (Math.random() < xDiff / (xDiff + yDiff)) {
+                let dir = (pos.x < to.x ? 1 : -1) * (Math.random() >= 0.2 ? 1 : -1);
+                if (pos.x + dir === roomWidth - 1 || pos.x + dir === 0) {
+                    dir = -dir;
+                }
+                pos = { x: pos.x + dir, y: pos.y };
+            } else {
+                let dir = (pos.y < to.y ? 1 : -1) * (Math.random() >= 0.25 ? 1 : -1);
+                if (pos.y + dir === roomHeight - 1 || pos.y + dir === 0) {
+                    dir = -dir;
+                }
+                pos = { x: pos.x, y: pos.y + dir };
+            }
+            returnPath.push(pos);
+        }
+        returnPath.push({ x: to.x, y: to.y });
+        return returnPath;
     }
 
     linkedToRoom(room) {
@@ -80,7 +169,7 @@ class Room {
             let yPos2 = room.y < this.y ? roomHeight - 1 : 0;
             let xPos = 1 + Math.ceil(Math.random() * (roomWidth - 4));
             let xPos2 = xPos + (Math.random() >= 0.5 ? 1 : -1);
-        
+
             this.tiles[yPos * roomWidth + xPos].link = { room: { x: room.x, y: room.y }, x: xPos, y: yPos2 }
             this.tiles[yPos * roomWidth + xPos2].link = { room: { x: room.x, y: room.y }, x: xPos2, y: yPos2 }
 
@@ -106,7 +195,6 @@ class Room {
             room.tiles[yPos2 * roomWidth + xPos2].link = { room: { x: this.x, y: this.y }, x: xPos, y: yPos2 }
 
             room.links.push({ room: { x: this.x, y: this.y }, tiles: [{ x: xPos2, y: yPos }, { x: xPos2, y: yPos2 }] });
-
         } else {
             throw new Error("Rooms are not adjacent");
         }
@@ -114,5 +202,9 @@ class Room {
 }
 
 class Tile {
-
+    constructor(x, y, options) {
+        this.x = x;
+        this.y = y;
+        this.wall = true; //all tiles are walls until made otherwise
+    }
 }

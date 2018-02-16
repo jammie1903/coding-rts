@@ -12,6 +12,7 @@
     "bcrypt": "^1.0.3",
     "body-parser": "^1.18.2",
     "bunyan": "^1.8.12",
+    "chance": "^1.0.13",
     "delete-empty": "^1.0.1",
     "express": "^4.16.2",
     "express-jwt": "^5.3.0",
