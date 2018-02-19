@@ -26,28 +26,36 @@ class VmMaster {
         }
     }
 
+    sendMap(map) {
+        return this.sendMessage("map", map);
+    }
+
     refreshUserCode(user) {
         return this.sendMessage("clear", user);
     }
 
-    processUsers(previousResults = [], users = this.users) {
+    processUsers(previousResults = { updateMessages: [], initMessages: [] }, users = this.users) {
         return this.sendMessage("runMultiple", users).catch(err => {
-            if (err.error && err.error === "TIMEOUT") {
-                let failedUserIndex = err.updates.length;
+            if (err.message === "TIMEOUT") {
+                let failedUserIndex = err.updateMessages.length;
                 let failedUser = users[failedUserIndex];
                 console.log(failedUser.username + " timed-out");
                 err.updates.push({ user: failedUser, time: "TIMEOUT" });
                 if ((failedUserIndex + 1) === users.length) {
                     return err.updates;
                 } else {
-                    return this.processUsers(previousResults.concat(err.updates), users.slice(failedUserIndex + 1, users.length));
+                    return this.processUsers({
+                        updateMessages: previousResults.updateMessages.concat(err.updateMessages),
+                        initMessages: previousResults.updateMessages.concat(err.initMessages)
+                    }, users.slice(failedUserIndex + 1, users.length));
                 }
             } else {
                 throw err;
             }
-        }).then(results => {
-            const fullResults = previousResults.concat(results);
-            fullResults.forEach((result) => {
+        }).then(result => {
+            const updates = previousResults.updateMessages.concat(result.updateMessages);
+            const initMessages = previousResults.initMessages.concat(result.initMessages)
+            updates.forEach((result) => {
                 if (result.time === 'TIMEOUT') {
                     const index = this.users.indexOf(result.user);
                     if (index > -1) {
@@ -56,7 +64,7 @@ class VmMaster {
                     }
                 }
             });
-            return fullResults;
+            return {updates, initMessages, message: result.message};
         });
     }
 
@@ -106,19 +114,24 @@ class VmMaster {
         const id = ++idIncrement;
         let timeout;
         return this.getWorker().then(worker => new Promise((res, rej) => {
-            const updates = [];
+            const updateMessages = [];
+            const initMessages = []
             const listener = (receivedMessage) => {
                 if (receivedMessage && receivedMessage.requestId === id) {
                     clearTimeout(timeout);
-                    updates.push(receivedMessage.response);
-                    if (!receivedMessage.update) {
+                    if (receivedMessage.type === "COMPLETE") {
                         worker.removeListener('message', listener);
                         if (receivedMessage.error) {
-                            rej(updates);
+                            rej({ initMessages, updateMessages, message: receivedMessage.response });
                         } else {
-                            res(updates);
+                            res({ initMessages, updateMessages, message: receivedMessage.response });
                         }
                     } else {
+                        if (receivedMessage.type === "INIT") {
+                            initMessages.push(receivedMessage.response);
+                        } else {
+                            updateMessages.push(receivedMessage.response);
+                        }
                         timeout = setTimeout(timeoutHandler, TIME_OUT_LIMIT);
                     }
                 }
@@ -126,7 +139,7 @@ class VmMaster {
             const timeoutHandler = () => {
                 worker.removeListener('message', listener);
                 this.killWorker();
-                rej({ error: "TIMEOUT", updates });
+                rej({ message: "TIMEOUT", initMessages, updateMessages });
             }
             worker.on('message', listener);
             worker.send({ id, action, data });
