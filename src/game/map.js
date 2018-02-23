@@ -292,7 +292,7 @@ class Room {
                 if (closed.indexOf(tile) === -1) {
                     const g = current.g + 1, h = Math.abs(tile.x - end.x) + Math.abs(tile.y - end.y);
                     let inOpen = open.find(entry => entry.tile === tile);
-                    if (inOpen && inOpen.g + inOpen.h > g + h) {
+                    if (inOpen && (inOpen.g + inOpen.h > g + h)) {
                         inOpen.g = g;
                         inOpen.h = h;
                         inOpen.parent = current;

@@ -2,6 +2,9 @@ const db = require("./db");
 
 module.exports.checkUserExists = function (username) {
     return new Promise((resolve, reject) => {
+        if(username.toLowerCase() === "env" || username.toLowerCase() === "admin") {
+            resolve(false);
+        }
         db.get("select username from users where username = ?", [username], (err, row) => {
             if (err) {
                 reject(err);
