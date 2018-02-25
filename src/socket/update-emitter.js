@@ -34,7 +34,7 @@ module.exports = class UpdateEmitter {
         updatedRooms.forEach((room) => {
             updates = updates.then(new Promise((res, rej) => {
                 stream.record.getRecord(`room/${room}`).whenReady(record => {
-                    record.set(this.rooms[room]);
+                    record.set("value", Array.from(this.rooms[room]));
                     res();
                 });
             }));
@@ -44,13 +44,13 @@ module.exports = class UpdateEmitter {
             let keys = object.split("/");
             updates = updates.then(new Promise((res, rej) => {
                 stream.record.getRecord(`gameobject-detailed/${object}`).whenReady(record => {
-                    record.set(this.state[keys[0]][keys[1]]);
+                    record.set("value", this.state[keys[0]][keys[1]]);
                     res();
                 });
             }));
             updates = updates.then(new Promise((res, rej) => {
                 stream.record.getRecord(`gameobject/${object}`).whenReady(record => {
-                    record.set(this.state[keys[0]][keys[1]]);
+                    record.set("value", this.state[keys[0]][keys[1]]);
                     res();
                 });
             }));

@@ -6,7 +6,7 @@ module.exports = class Player {
         this.name = user.username;
         this.units = {};
         this.structures = {};
-        this.color = chance.color();
+        this.color = chance.color({format: '0x'});
     }
 
     getUnitNames() {
