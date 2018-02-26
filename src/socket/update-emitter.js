@@ -5,10 +5,11 @@ const adminToken = jwt.sign({ id: "ADMIN", username: "ADMIN" }, SECRET);
 
 const deepstreamClient = require('deepstream.io-client-js');
 const stream = deepstreamClient("localhost:3091").login({ token: adminToken });
+const state = require("../game/state").state;
 
 module.exports = class UpdateEmitter {
     constructor() {
-        this.state = {};
+        this.state = state;
         this.rooms = {};
     }
 

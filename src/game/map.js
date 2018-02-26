@@ -141,7 +141,7 @@ class Room {
     getNearestFreeTile(tile) {
         let distanceToCheck = 1;
         while (distanceToCheck <= Math.max(ROOM_WIDTH, ROOM_HEIGHT)) {
-            let emptyTile = this.getTilesWithGivenDistance(tile, distanceToCheck).find(t => !t.wall);
+            let emptyTile = this.getTilesWithGivenDistance(tile, distanceToCheck).find(t => !t.wall && !t.link);
             if (emptyTile) {
                 return emptyTile;
             }
@@ -284,10 +284,14 @@ class Room {
     getPath(start, end) {
         let current;
         const closed = [];
+        const endTile = this.getTile(end.x, end.y);
+        if(!endTile || endTile.wall) {
+            return null;
+        }
         let open = [{ tile: this.getTile(start.x, start.y), g: 0, h: Math.abs(start.x - end.x) + Math.abs(start.y - end.y) }];
         while (open.length) {
             current = open.shift();
-            if (current.tile.x === end.x && current.tile.y === end.y) {
+            if (current.tile === endTile) {
                 let returnList = [];
                 while (current.parent) {
                     returnList.unshift(current.tile);
@@ -311,7 +315,6 @@ class Room {
             });
             open = open.sort((a, b) => (a.g + a.h) - (b.g + b.h));
             closed.push(current.tile);
-            
         }
         return null;
     }
