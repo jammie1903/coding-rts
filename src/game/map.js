@@ -282,11 +282,19 @@ class Room {
     }
 
     getPath(start, end) {
-        let current = { tile: this.getTile(start.x, start.y), g: 0, h: Math.abs(start.x - end.x) + Math.abs(start.y - end.y) };
-        const closed = [current.tile];
-        let open = [];
-        let firstStep = true;
-        while ((firstStep || open.length)) {
+        let current;
+        const closed = [];
+        let open = [{ tile: this.getTile(start.x, start.y), g: 0, h: Math.abs(start.x - end.x) + Math.abs(start.y - end.y) }];
+        while (open.length) {
+            current = open.shift();
+            if (current.tile.x === end.x && current.tile.y === end.y) {
+                let returnList = [];
+                while (current.parent) {
+                    returnList.unshift(current.tile);
+                    current = current.parent;
+                }
+                return returnList.length ? returnList : null;
+            }
 
             this.neighbours(current.tile).filter(t => !t.wall).forEach(tile => {
                 if (closed.indexOf(tile) === -1) {
@@ -301,20 +309,9 @@ class Room {
                     }
                 }
             });
-
-            open = open.sort((a, b) => { (a.g + a.h) - (b.g + b.h)});
-            current = open.shift();
-            if (current.tile.x === end.x && current.tile.y === end.y) {
-                let returnList = [];
-                while (current.parent) {
-                    returnList.unshift(current.tile);
-                    current = current.parent;
-                }
-                console.log(returnList);
-                return returnList;
-            }
+            open = open.sort((a, b) => (a.g + a.h) - (b.g + b.h));
             closed.push(current.tile);
-            firstStep = false;
+            
         }
         return null;
     }

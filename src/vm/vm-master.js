@@ -40,9 +40,9 @@ class VmMaster {
                 let failedUserIndex = err.updateMessages.length;
                 let failedUser = users[failedUserIndex];
                 console.log(failedUser.username + " timed-out");
-                err.updates.push({ user: failedUser, time: "TIMEOUT" });
+                err.updateMessages.push({ user: failedUser, time: "TIMEOUT" });
                 if ((failedUserIndex + 1) === users.length) {
-                    return err.updates;
+                    return {updates: err.updateMessages, err: result.message};
                 } else {
                     return this.processUsers({
                         updateMessages: previousResults.updateMessages.concat(err.updateMessages),
