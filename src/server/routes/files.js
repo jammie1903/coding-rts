@@ -28,17 +28,22 @@ function getFilePath(req, next) {
     return path.join(root, 'user-' + req.user.id, filePath);
 }
 
-function dirTree(filename, root = true) {
+function dirTree(filename, root = true, p = "") {
+    if(!root) {
+        p = p + path.basename(filename); // not path.join because its for a url
+    }
+    
     const stats = fs.lstatSync(filename),
         info = {
-            name: path.basename(filename)
+            name: root ? "src" : path.basename(filename),
+            path: p
         };
 
     if (stats.isDirectory()) {
         info.type = "folder";
         info.children = fs.readdirSync(filename)
             .filter(child => !root || child !== BOOTSTRAP_FILE)
-            .map(child => dirTree(filename + '/' + child, false));
+            .map(child => dirTree(path.join(filename, child), false, p));
     } else {
         info.type = "file";
     }
@@ -49,7 +54,7 @@ function dirTree(filename, root = true) {
 module.exports.getFiles = (req, res, next) => {
     const mainFolder = path.join(root, 'user-' + req.user.id);
     if (!fs.lstatSync(mainFolder).isDirectory()) {
-        res.json({});
+        res.json({ name: "src", type: "folder", children: [] });
     } else {
         res.json(dirTree(mainFolder))
     }
@@ -69,7 +74,7 @@ module.exports.saveFile = (req, res, next) => {
     const dir = getFilePath(req, next)
     if (dir) {
         fse.outputFileSync(dir, req.body);
-        vm.refreshUserCode({id: req.user.id, name: req.user.username})
+        vm.refreshUserCode({ id: req.user.id, name: req.user.username })
             .then(() => res.json("success"))
             .catch((e) => { console.log(e); res.json("save successful, but running code could not be updated") });
     }
@@ -81,7 +86,7 @@ module.exports.deleteFile = (req, res, next) => {
         try {
             fs.unlinkSync(dir);
             deleteEmpty.sync(path.join(root, 'user-' + req.user.id), { verbose: false });
-            vm.refreshUserCode({id: req.user.id, name: req.user.username})
+            vm.refreshUserCode({ id: req.user.id, name: req.user.username })
                 .then(() => res.json("success"))
                 .catch((e) => { console.log(e); res.json("delete successful, but running code could not be updated") });
         } catch (e) {
