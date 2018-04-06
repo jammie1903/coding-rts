@@ -30,7 +30,7 @@ function getFilePath(req, next) {
 
 function dirTree(filename, root = true, p = "") {
     if(!root) {
-        p = p + path.basename(filename); // not path.join because its for a url
+        p = p + "/" + path.basename(filename); // not path.join because its for a url
     }
     
     const stats = fs.lstatSync(filename),
@@ -71,7 +71,7 @@ module.exports.getFile = (req, res, next) => {
 }
 
 module.exports.saveFile = (req, res, next) => {
-    const dir = getFilePath(req, next)
+    const dir = getFilePath(req, next);
     if (dir) {
         fse.outputFileSync(dir, req.body);
         vm.refreshUserCode({ id: req.user.id, name: req.user.username })
